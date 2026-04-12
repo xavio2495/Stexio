@@ -1,5 +1,4 @@
-// Agent 05 implements x402-hook.ts
+export { X402ExactHook, X402SessionHook } from "./x402-hook.js"
+export type { X402ExactConfig, X402SessionConfig } from "./x402-hook.js"
 // Agent 06 implements mpp-hook.ts
 // Agent 07 implements stellar-wallet-hook.ts
-// This file re-exports all hooks once implemented.
-export {}

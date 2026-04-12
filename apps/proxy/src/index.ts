@@ -5,12 +5,11 @@ import getPort from "get-port"
 import { config } from "dotenv"
 import { redisStore, buildStellarRecipientMap, type StoredServerConfig } from "./db/redis.js"
 import { auth } from "./lib/auth.js"
-import { LoggingHook, withProxy } from "@stexio/js-sdk/handler"
-
-// Hook imports — stubs until agents 05-07 implement them
-// import { X402ExactHook, X402SessionHook } from "./lib/hooks/x402-hook.js"
-// import { MppChargeHook, MppSessionHook } from "./lib/hooks/mpp-hook.js"
-// import { StellarWalletHook } from "./lib/hooks/stellar-wallet-hook.js"
+import { LoggingHook, withProxy, type Hook } from "@stexio/js-sdk/handler"
+import { X402ExactHook, X402SessionHook } from "./lib/hooks/x402-hook.js"
+import { Keypair } from "@stellar/stellar-sdk"
+// Agent 06 imports: MppChargeHook, MppSessionHook from "./lib/hooks/mpp-hook.js"
+// Agent 07 imports: StellarWalletHook from "./lib/hooks/stellar-wallet-hook.js"
 
 config()
 
@@ -242,19 +241,38 @@ app.all("/mcp", async (c) => {
   }
 
   // Build hook pipeline
-  const hooks = [new LoggingHook()]
+  const hooks: Hook[] = [new LoggingHook()]
 
   if (monetization && Object.keys(monetization.prices).length > 0) {
-    // TEMPORARY: No payment enforcement yet — hooks added in Agents 05/06/07
-    // Agent 05 → push X402ExactHook (x402-exact) + X402SessionHook (x402-session)
-    //   import { X402ExactHook, X402SessionHook } from "./lib/hooks/x402-hook.js"
-    //   if (monetization.paymentModes.includes("x402-exact")) hooks.push(new X402ExactHook({...}))
-    //   if (monetization.paymentModes.includes("x402-session")) hooks.push(new X402SessionHook({...}))
-    // Agent 06 → push MppChargeHook (mpp-charge) + MppSessionHook (mpp-session)
-    //   import { MppChargeHook, MppSessionHook } from "./lib/hooks/mpp-hook.js"
-    // Agent 07 → push StellarWalletHook (auto-creates sponsored account on 402)
-    //   import { StellarWalletHook } from "./lib/hooks/stellar-wallet-hook.js"
-    //   hooks.push(new StellarWalletHook({ userId: _userId, ... }))
+    const samplePrice = (Object.values(monetization.prices)[0] as number) ?? 0.001
+    const recipientAddress = Object.values(monetization.recipient)[0] ?? ""
+    const network = (process.env.STELLAR_NETWORK ?? "testnet") as "testnet" | "mainnet"
+
+    if (monetization.paymentModes.includes("x402-exact") && recipientAddress) {
+      hooks.push(new X402ExactHook({
+        recipientAddress,
+        facilitatorUrl: process.env.FACILITATOR_URL ?? "https://www.x402.org/facilitator",
+        network,
+        pricePerCall: samplePrice,
+      }))
+    }
+
+    if (
+      monetization.paymentModes.includes("x402-session") &&
+      monetization.sessionContractId &&
+      process.env.STELLAR_SERVER_SECRET_KEY
+    ) {
+      hooks.push(new X402SessionHook({
+        contractId: monetization.sessionContractId,
+        serverKeypair: Keypair.fromSecret(process.env.STELLAR_SERVER_SECRET_KEY),
+        network,
+        pricePerCall: BigInt(Math.round(samplePrice * 10_000_000)),
+        batchSize: 10,
+        batchIntervalMs: 30_000,
+      }))
+    }
+    // Agent 06: push MppChargeHook + MppSessionHook
+    // Agent 07: push StellarWalletHook
   }
 
   const reqForProxy = new Request(c.req.url, {
