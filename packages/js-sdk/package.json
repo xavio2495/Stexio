@@ -14,16 +14,16 @@
       "default": "./dist/index.js"
     },
     "./client": {
-      "types": "./dist/client.d.ts",
-      "default": "./dist/client.js"
+      "types": "./dist/client/index.d.ts",
+      "default": "./dist/client/index.js"
     },
     "./handler": {
-      "types": "./dist/handler.d.ts",
-      "default": "./dist/handler.js"
+      "types": "./dist/handler/index.d.ts",
+      "default": "./dist/handler/index.js"
     },
     "./server": {
-      "types": "./dist/server.d.ts",
-      "default": "./dist/server.js"
+      "types": "./dist/server/index.d.ts",
+      "default": "./dist/server/index.js"
     }
   },
   "scripts": {
