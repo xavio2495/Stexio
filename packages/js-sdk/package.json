@@ -1,0 +1,57 @@
+{
+  "name": "@stexio/js-sdk",
+  "version": "0.1.0",
+  "description": "SDK and CLI for Stexio — paid MCP servers on Stellar",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "stexio": "dist/cli/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
+    },
+    "./handler": {
+      "types": "./dist/handler.d.ts",
+      "default": "./dist/handler.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.18.2",
+    "@stellar/stellar-sdk": "^15.0.1",
+    "@stellar/mpp": "^0.4.0",
+    "commander": "^12.1.0",
+    "dotenv": "^16.5.0",
+    "mppx": "^0.5.12",
+    "x402-stellar": "^0.2.0",
+    "x402-turbo-stellar": "0.1.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=20.10.0"
+  },
+  "files": ["dist", "README.md"],
+  "publishConfig": {
+    "access": "public"
+  }
+}

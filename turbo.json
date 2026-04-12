@@ -1,0 +1,52 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "tui",
+  "globalDependencies": [
+    "**/.env*",
+    "**/*.schema.*"
+  ],
+  "globalEnv": [
+    "DATABASE_URL",
+    "GITHUB_CLIENT_ID",
+    "GITHUB_CLIENT_SECRET",
+    "TRUSTED_ORIGINS",
+    "BETTER_AUTH_SECRET",
+    "BETTER_AUTH_URL",
+    "UPSTASH_REDIS_REST_URL",
+    "UPSTASH_REDIS_REST_TOKEN",
+    "NEXT_PUBLIC_PROXY_URL",
+    "NEXT_PUBLIC_AUTH_URL",
+    "NEXT_PUBLIC_STELLAR_NETWORK",
+    "NEXT_PUBLIC_SESSION_CONTRACT_ID",
+    "STELLAR_NETWORK",
+    "STELLAR_RPC_URL",
+    "STELLAR_NETWORK_PASSPHRASE",
+    "STELLAR_SERVER_SECRET_KEY",
+    "SESSION_CONTRACT_ID",
+    "USDC_CONTRACT_ID",
+    "PORT"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": { "outputs": [] },
+    "typecheck": { "outputs": [] },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"]
+    },
+    "e2e": {
+      "cache": false,
+      "dependsOn": ["build"]
+    },
+    "db:generate": { "cache": false },
+    "db:push": { "cache": false },
+    "db:migrate": { "cache": false }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "proxy",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "tsx --watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.13",
+    "@neondatabase/serverless": "^0.10.4",
+    "@upstash/redis": "^1.34.0",
+    "@stellar/stellar-sdk": "^15.0.1",
+    "@stellar/mpp": "^0.4.0",
+    "better-auth": "^1.6.2",
+    "dotenv": "^17.0.0",
+    "drizzle-orm": "^0.44.0",
+    "get-port": "^7.1.0",
+    "hono": "^4.12.12",
+    "mppx": "^0.5.12",
+    "x402-stellar": "^0.2.0",
+    "x402-turbo-stellar": "0.1.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "drizzle-kit": "^0.31.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.0.0"
+  }
+}
