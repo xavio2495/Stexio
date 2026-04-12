@@ -7,8 +7,8 @@ import { redisStore, buildStellarRecipientMap, type StoredServerConfig } from ".
 import { auth } from "./lib/auth.js"
 import { LoggingHook, withProxy, type Hook } from "@stexio/js-sdk/handler"
 import { X402ExactHook, X402SessionHook } from "./lib/hooks/x402-hook.js"
+import { MppHook } from "./lib/hooks/mpp-hook.js"
 import { Keypair } from "@stellar/stellar-sdk"
-// Agent 06 imports: MppChargeHook, MppSessionHook from "./lib/hooks/mpp-hook.js"
 // Agent 07 imports: StellarWalletHook from "./lib/hooks/stellar-wallet-hook.js"
 
 config()
@@ -271,7 +271,18 @@ app.all("/mcp", async (c) => {
         batchIntervalMs: 30_000,
       }))
     }
-    // Agent 06: push MppChargeHook + MppSessionHook
+    // MPP runs first — if X-MPP-Credential present, it handles the request
+    if (
+      monetization.paymentModes.includes('mpp-charge') ||
+      monetization.paymentModes.includes('mpp-session')
+    ) {
+      hooks.push(new MppHook({
+        serverAddress: recipientAddress,
+        pricePerCall: BigInt(Math.round(samplePrice * 10_000_000)),
+        paymentModes: monetization.paymentModes,
+        network,
+      }))
+    }
     // Agent 07: push StellarWalletHook
   }
 
