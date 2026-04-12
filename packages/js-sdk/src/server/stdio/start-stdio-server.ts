@@ -27,7 +27,8 @@ export interface ServerConnection {
 
 export interface StartStdioServerConfig {
   serverConnections: ServerConnection[]
-  stellarConfig?: StellarClientConfig
+  stellarClientConfig?: StellarClientConfig
+  apiKey?: string
   clientName?: string
   clientVersion?: string
 }
@@ -44,7 +45,12 @@ export async function startStdioServer(config: StartStdioServerConfig): Promise<
   const servers: Server[] = []
 
   for (const connection of config.serverConnections) {
-    const transport = new StreamableHTTPClientTransport(new URL(connection.url))
+    const transport = new StreamableHTTPClientTransport(
+      new URL(connection.url),
+      config.apiKey
+        ? { requestInit: { headers: { Authorization: `Bearer ${config.apiKey}` } } }
+        : undefined
+    )
 
     const upstreamClient = new Client(
       {
@@ -57,8 +63,8 @@ export async function startStdioServer(config: StartStdioServerConfig): Promise<
     await upstreamClient.connect(transport)
 
     // Wrap with payment capabilities if configured
-    const payingClient = config.stellarConfig
-      ? withStellarClient(upstreamClient, config.stellarConfig)
+    const payingClient = config.stellarClientConfig
+      ? withStellarClient(upstreamClient, config.stellarClientConfig)
       : upstreamClient
 
     const serverVersion = upstreamClient.getServerVersion() as { name: string; version: string }
