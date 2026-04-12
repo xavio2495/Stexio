@@ -9,7 +9,7 @@ import { LoggingHook, withProxy, type Hook } from "@stexio/js-sdk/handler"
 import { X402ExactHook, X402SessionHook } from "./lib/hooks/x402-hook.js"
 import { MppHook } from "./lib/hooks/mpp-hook.js"
 import { Keypair } from "@stellar/stellar-sdk"
-// Agent 07 imports: StellarWalletHook from "./lib/hooks/stellar-wallet-hook.js"
+import { StellarWalletHook } from "./lib/hooks/stellar-wallet-hook.js"
 
 config()
 
@@ -248,6 +248,9 @@ app.all("/mcp", async (c) => {
     const recipientAddress = Object.values(monetization.recipient)[0] ?? ""
     const network = (process.env.STELLAR_NETWORK ?? "testnet") as "testnet" | "mainnet"
 
+    // StellarWalletHook runs second — before payment hooks so it can auto-pay on 402 responses
+    hooks.push(new StellarWalletHook(_userId, network))
+
     if (monetization.paymentModes.includes("x402-exact") && recipientAddress) {
       hooks.push(new X402ExactHook({
         recipientAddress,
@@ -283,7 +286,6 @@ app.all("/mcp", async (c) => {
         network,
       }))
     }
-    // Agent 07: push StellarWalletHook
   }
 
   const reqForProxy = new Request(c.req.url, {
