@@ -13,7 +13,7 @@ if (!UPSTASH_REDIS_REST_URL || !UPSTASH_REDIS_REST_TOKEN) {
   )
 }
 
-const redis = new Redis({
+export const redis = new Redis({
   url: UPSTASH_REDIS_REST_URL,
   token: UPSTASH_REDIS_REST_TOKEN,
 })
@@ -118,8 +118,8 @@ export class RedisMcpStore {
         await this.migrateFromMcpKeys()
       }
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Upstash Redis connection failed:`, error)
-      throw error
+      console.error(`[${new Date().toISOString()}] Upstash Redis connection failed — store will retry on first request:`, error)
+      // Don't re-throw: let the proxy stay up; per-request errors are caught individually
     }
   }
 

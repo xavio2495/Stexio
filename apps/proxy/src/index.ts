@@ -24,7 +24,9 @@ async function initializeStore(): Promise<void> {
   await redisStore.connect()
 }
 
-void initializeStore()
+initializeStore().catch(err =>
+  console.error('[stexio-proxy] Store init failed — continuing without Redis:', err)
+)
 
 // ─── URL resolution (ported from mcp2 — unchanged) ───────────────────────────
 
@@ -265,26 +267,42 @@ app.all("/mcp", async (c) => {
       monetization.sessionContractId &&
       process.env.STELLAR_SERVER_SECRET_KEY
     ) {
-      hooks.push(new X402SessionHook({
-        contractId: monetization.sessionContractId,
-        serverKeypair: Keypair.fromSecret(process.env.STELLAR_SERVER_SECRET_KEY),
-        network,
-        pricePerCall: BigInt(Math.round(samplePrice * 10_000_000)),
-        batchSize: 10,
-        batchIntervalMs: 30_000,
-      }))
+      try {
+        hooks.push(new X402SessionHook({
+          contractId: monetization.sessionContractId,
+          serverKeypair: Keypair.fromSecret(process.env.STELLAR_SERVER_SECRET_KEY),
+          network,
+          pricePerCall: BigInt(Math.round(samplePrice * 10_000_000)),
+          batchSize: 10,
+          batchIntervalMs: 30_000,
+        }))
+      } catch (err) {
+        console.warn('[stexio-proxy] X402SessionHook init failed (invalid STELLAR_SERVER_SECRET_KEY?):', err)
+      }
     }
-    // MPP runs first — if X-MPP-Credential present, it handles the request
+    // MPP: real on-chain verification via mppx + @stellar/mpp. Requires MPP_SECRET_KEY.
     if (
+      (monetization.paymentModes.includes('mpp-charge') ||
+        monetization.paymentModes.includes('mpp-session')) &&
+      process.env.MPP_SECRET_KEY
+    ) {
+      try {
+        hooks.push(new MppHook({
+          serverAddress: recipientAddress,
+          pricePerCall: BigInt(Math.round(samplePrice * 10_000_000)),
+          paymentModes: monetization.paymentModes,
+          channelAddress: process.env.MPP_CHANNEL_ADDRESS,
+          commitmentPubkey: process.env.COMMITMENT_PUBKEY,
+          network,
+        }))
+      } catch (err) {
+        console.warn('[stexio-proxy] MppHook init failed:', err)
+      }
+    } else if (
       monetization.paymentModes.includes('mpp-charge') ||
       monetization.paymentModes.includes('mpp-session')
     ) {
-      hooks.push(new MppHook({
-        serverAddress: recipientAddress,
-        pricePerCall: BigInt(Math.round(samplePrice * 10_000_000)),
-        paymentModes: monetization.paymentModes,
-        network,
-      }))
+      console.warn('[stexio-proxy] MPP modes configured but MPP_SECRET_KEY is not set — skipping MppHook')
     }
   }
 
