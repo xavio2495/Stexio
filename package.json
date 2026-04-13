@@ -25,5 +25,8 @@
     "overrides": {
       "@modelcontextprotocol/sdk": "1.18.2"
     }
+  },
+  "dependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.60.1"
   }
 }
