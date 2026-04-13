@@ -1,0 +1,29 @@
+{
+  "name": "stexio-test-client",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@stellar/mpp": "^0.4.0",
+    "@stellar/stellar-sdk": "^15.0.1",
+    "mppx": "^0.5.12",
+    "next": "^15.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "x402-stellar": "^0.2.0",
+    "x402-turbo-stellar": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.8.0"
+  }
+}

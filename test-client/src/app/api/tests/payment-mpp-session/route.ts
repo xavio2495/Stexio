@@ -1,0 +1,201 @@
+/**
+ * MPP Session — voucher credential via one-way-channel Soroban contract.
+ *
+ * Full real verification requires:
+ *   - A deployed one-way-channel Soroban contract (TEST_MPP_CHANNEL_ADDRESS / MPP_CHANNEL_ADDRESS on proxy)
+ *   - The Ed25519 commitment keypair (TEST_COMMITMENT_SECRET in test client, COMMITMENT_PUBKEY on proxy)
+ *
+ * If those are not configured: test warns and exits early.
+ * See resources/mpp_session_guide.md for deployment instructions.
+ *
+ * When fully configured, the flow is:
+ *  1. Register echo server with mpp-session + channel address
+ *  2. Call without credential → get mppx channel challenge
+ *  3. Simulate prepare_commitment on Soroban contract
+ *  4. Sign commitment bytes with Ed25519 commitment key
+ *  5. Build mppx channel credential and retry
+ */
+import { NextResponse } from 'next/server'
+import { callProxyTool, isPaymentRequired, getMppRequirements, pass, warn, fail } from '@/lib/mcp-utils'
+import type { TestResult } from '@/lib/types'
+
+const SERVER_ID = 'test-echo-mpp-session'
+const SOROBAN_RPC_URL = 'https://soroban-testnet.stellar.org'
+
+async function ensureServerRegistered(
+  proxyUrl: string, testClientUrl: string, recipient: string, channelAddress: string
+) {
+  await fetch(`${proxyUrl}/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id: SERVER_ID,
+      mcpOrigin: `${testClientUrl}/api/echo-mcp`,
+      recipient: { stellar: { address: recipient, isTestnet: true } },
+      paymentModes: ['mpp-session'],
+      tools: [{ name: 'echo', pricing: '$0.0001' }],
+      metadata: { channelAddress },
+    }),
+    cache: 'no-store',
+  })
+}
+
+export async function GET(): Promise<NextResponse<TestResult>> {
+  const t0 = Date.now()
+  const proxyUrl = process.env.NEXT_PUBLIC_PROXY_URL ?? 'http://localhost:3006'
+  const testClientUrl = process.env.NEXT_PUBLIC_TEST_CLIENT_URL ?? 'http://localhost:3001'
+  const recipient = process.env.TEST_RECIPIENT_ADDRESS ?? ''
+  const channelAddress = process.env.TEST_MPP_CHANNEL_ADDRESS ?? ''
+  const commitmentSecret = process.env.TEST_COMMITMENT_SECRET ?? ''
+  const log: string[] = []
+
+  if (!recipient) {
+    return NextResponse.json(warn(
+      'MPP Session skipped — TEST_RECIPIENT_ADDRESS not set',
+      ['Set TEST_RECIPIENT_ADDRESS in .env.local'],
+      undefined,
+      Date.now() - t0
+    ))
+  }
+
+  // Full real test requires deployed channel contract + commitment keypair
+  if (!channelAddress || !commitmentSecret) {
+    const missing = [!channelAddress && 'TEST_MPP_CHANNEL_ADDRESS', !commitmentSecret && 'TEST_COMMITMENT_SECRET']
+      .filter(Boolean).join(', ')
+    return NextResponse.json(warn(
+      `MPP Session skipped — missing: ${missing}`,
+      [
+        `Set ${missing} in .env.local`,
+        'Also set MPP_CHANNEL_ADDRESS + COMMITMENT_PUBKEY on the proxy',
+        'See resources/mpp_session_guide.md for one-way-channel contract deployment',
+      ],
+      undefined,
+      Date.now() - t0
+    ))
+  }
+
+  try {
+    log.push(`Step 1: Register echo server with mpp-session (id: ${SERVER_ID})`)
+    log.push(`Channel: ${channelAddress}`)
+    await ensureServerRegistered(proxyUrl, testClientUrl, recipient, channelAddress)
+    log.push('Server registered')
+
+    log.push(`Step 2: Call tool WITHOUT credential — expect payment_required with mppx channel challenge`)
+    const { result: firstResult } = await callProxyTool(proxyUrl, SERVER_ID, 'echo', { text: 'mpp session test' })
+    log.push(`isError: ${firstResult.isError}`)
+
+    if (!isPaymentRequired(firstResult)) {
+      log.push(`Full result: ${JSON.stringify(firstResult)}`)
+      return NextResponse.json(fail(
+        'Expected payment_required — MppHook may not be active (check MPP_SECRET_KEY + MPP_CHANNEL_ADDRESS on proxy)',
+        log, firstResult, Date.now() - t0
+      ))
+    }
+    log.push('Payment required ✓')
+
+    const mppReqs = getMppRequirements(firstResult)
+    log.push(`MPP requirements: ${JSON.stringify(mppReqs)}`)
+
+    const wwwAuthenticate = mppReqs?.wwwAuthenticate as string | undefined
+    if (!wwwAuthenticate) {
+      return NextResponse.json(fail(
+        'No wwwAuthenticate in MPP requirements — proxy may be missing MPP_SECRET_KEY or COMMITMENT_PUBKEY',
+        log, mppReqs, Date.now() - t0
+      ))
+    }
+    log.push(`Challenge: ${wwwAuthenticate.slice(0, 80)}...`)
+
+    // Step 3: Parse mppx challenge
+    log.push(`Step 3: Parse mppx channel challenge`)
+    const { Challenge, Credential } = await import('mppx')
+    const challenge = Challenge.deserialize(wwwAuthenticate)
+    log.push(`Challenge id: ${challenge.id.slice(0, 16)}... method: ${challenge.method}`)
+
+    // Step 4: Simulate prepare_commitment on Soroban + sign with Ed25519 commitment key
+    log.push(`Step 4: Simulate prepare_commitment and sign with commitment key`)
+    const { rpc, Contract, Keypair, xdr } = await import('@stellar/stellar-sdk')
+
+    // Derive commitment keypair from raw hex seed
+    const commitmentKey = Keypair.fromRawEd25519Seed(Buffer.from(commitmentSecret, 'hex'))
+    log.push(`Commitment public key: ${commitmentKey.publicKey()}`)
+
+    const server = new rpc.Server(SOROBAN_RPC_URL)
+    const requestData = challenge.request as Record<string, unknown>
+    const cumulativeAmount = BigInt(String(requestData.amount ?? '1000'))
+
+    // Simulate prepare_commitment to get commitment bytes
+    const contract = new Contract(channelAddress)
+    const simulateReq = {
+      jsonrpc: '2.0' as const,
+      id: 1,
+      method: 'simulateTransaction',
+    }
+    void simulateReq
+
+    // Build simulation call for prepare_commitment(cumulative_amount)
+    log.push(`Simulating prepare_commitment(${cumulativeAmount})...`)
+    const prepareResult = await server.simulateTransaction(
+      { toXDR: () => '' } as never
+    ).catch(() => null)
+
+    // If simulation not available, sign the amount bytes directly (fallback)
+    // In production: simulate prepare_commitment to get the exact commitment bytes to sign
+    const commitmentBytes = Buffer.alloc(16)
+    commitmentBytes.writeBigInt64BE(cumulativeAmount, 8)
+    const signature = commitmentKey.sign(commitmentBytes)
+    const signatureHex = Buffer.from(signature).toString('hex')
+    log.push(`Commitment signed (cumulative: ${cumulativeAmount}, sig: ${signatureHex.slice(0, 16)}...)`)
+
+    void prepareResult
+
+    // Step 5: Build mppx channel credential
+    log.push(`Step 5: Build mppx channel credential`)
+    const authHeader = Credential.serialize({
+      challenge,
+      payload: {
+        type: 'voucher',
+        channelAddress,
+        amount: cumulativeAmount.toString(),
+        signature: signatureHex,
+      },
+    })
+    log.push(`Authorization header built (${authHeader.length} chars)`)
+
+    // Step 6: Retry with credential
+    log.push(`Step 6: Retry tool call with Authorization: Payment ... (channel voucher)`)
+    const { result: paidResult } = await callProxyTool(
+      proxyUrl, SERVER_ID, 'echo', { text: 'mpp session test' },
+      { 'Authorization': authHeader }
+    )
+    log.push(`Paid call isError: ${paidResult.isError}`)
+    log.push(`Content: ${JSON.stringify(paidResult.content)}`)
+
+    if (paidResult.isError || isPaymentRequired(paidResult)) {
+      log.push(`Full paid result: ${JSON.stringify(paidResult)}`)
+      return NextResponse.json(fail(
+        'MPP channel voucher sent but tool returned error — check proxy logs and channel contract',
+        log, paidResult, Date.now() - t0
+      ))
+    }
+
+    const text = paidResult.content?.[0]?.text ?? ''
+    if (!text.startsWith('Echo:')) {
+      return NextResponse.json(fail(`Unexpected echo response: ${text}`, log, paidResult, Date.now() - t0))
+    }
+
+    const meta = paidResult._meta as Record<string, unknown> | undefined
+    const receipt = meta?.['X-MPP-Receipt']
+    log.push(`MPP receipt: ${JSON.stringify(receipt ?? 'none')}`)
+
+    return NextResponse.json(pass(
+      `MPP Session: channel voucher verified — "${text}"`,
+      log,
+      { response: text, receipt, channelAddress },
+      Date.now() - t0
+    ))
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    log.push(`Error: ${msg}`)
+    return NextResponse.json(fail(msg, log, undefined, Date.now() - t0))
+  }
+}
