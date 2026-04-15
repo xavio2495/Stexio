@@ -5,10 +5,20 @@ import { stellar as stellarChannel } from '@stellar/mpp/channel/server'
 import { USDC_SAC_TESTNET, USDC_SAC_MAINNET } from '@stellar/mpp'
 import { redis } from '../../db/redis.js'
 import { config } from "dotenv"
+import { appendFileSync } from 'fs'
 
 config()
 
 const MPP_RECEIPT_HEADER = 'X-MPP-Receipt'
+const LOG_FILE = '/tmp/mpp-verify.log'
+
+function writeLog(msg: string) {
+  try {
+    appendFileSync(LOG_FILE, `[${new Date().toISOString()}] ${msg}\n`)
+  } catch (e) {
+    // Fail silently if can't write
+  }
+}
 
 type MppHandlerResult =
   | { status: 200; withReceipt: (res: Response) => Response }
@@ -104,6 +114,12 @@ export class MppHook implements Hook {
 
   async processCallToolRequest(req: CallToolRequest, extra: RequestExtra) {
     const authHeader = extra.inboundHeaders?.get('Authorization') ?? ''
+    console.log('[MppHook] processCallToolRequest called, authHeader present:', !!authHeader)
+
+    writeLog(`[AuthHeader] Present: ${!!authHeader}, Length: ${authHeader.length}`)
+    if (authHeader) {
+      writeLog(`[AuthHeader] Scheme: ${authHeader.split(' ')[0]}, Prefix: ${authHeader.slice(0, 100)}...`)
+    }
 
     // Build synthetic request — mppx reads Authorization header from it
     const headers = new Headers()
@@ -114,11 +130,20 @@ export class MppHook implements Hook {
       headers,
     })
 
+    writeLog(`[MppHandler] Calling with mode: ${this.activeMode}`)
+
     let result: MppHandlerResult
     try {
       result = await this.mppHandler(syntheticReq)
+      writeLog(`[MppHandler] Result status: ${result.status}`)
+
+      if (result.status === 402) {
+        writeLog(`[MppHandler] ✗ REJECTED - credential not accepted`)
+      } else if (result.status === 200) {
+        writeLog(`[MppHandler] ✓ ACCEPTED - credential valid!`)
+      }
     } catch (err) {
-      console.warn('[MppHook] mppx handler error:', err)
+      writeLog(`[MppHandler] ERROR: ${err instanceof Error ? err.message : String(err)}`)
       return { resultType: 'continue' as const, request: req }
     }
 
@@ -127,6 +152,7 @@ export class MppHook implements Hook {
 
     if (result.status === 200) {
       // Valid credential — mark request as MPP-paid
+      console.log('[MppHook] ✓ Credential valid, marking mpp/paid')
       const patchedRequest: CallToolRequest = {
         ...req,
         params: {
@@ -143,6 +169,7 @@ export class MppHook implements Hook {
     }
 
     // status === 402: no credential or invalid — store challenge for processCallToolResult
+    console.log('[MppHook] ✗ Credential invalid or missing (status 402)')
     const wwwAuth = result.challenge?.headers?.get('WWW-Authenticate') ?? null
 
     const patchedRequest: CallToolRequest = {

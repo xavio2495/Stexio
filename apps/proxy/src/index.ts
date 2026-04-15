@@ -8,7 +8,7 @@ import { auth } from "./lib/auth.js"
 import { LoggingHook, withProxy, type Hook } from "@stexio/js-sdk/handler"
 import { X402ExactHook, X402SessionHook } from "./lib/hooks/x402-hook.js"
 import { MppHook } from "./lib/hooks/mpp-hook.js"
-import { Keypair } from "@stellar/stellar-sdk"
+import { Keypair, StrKey } from "@stellar/stellar-sdk"
 import { StellarWalletHook } from "./lib/hooks/stellar-wallet-hook.js"
 
 config()
@@ -287,12 +287,19 @@ app.all("/mcp", async (c) => {
       process.env.MPP_SECRET_KEY
     ) {
       try {
+        // Convert hex commitment public key to Stellar format if needed
+        let commitmentPubkey = process.env.COMMITMENT_PUBKEY
+        if (commitmentPubkey && commitmentPubkey.length === 64 && /^[0-9a-f]{64}$/i.test(commitmentPubkey)) {
+          // It's a raw hex Ed25519 public key — convert to Stellar strkey format
+          commitmentPubkey = StrKey.encodeEd25519PublicKey(Buffer.from(commitmentPubkey, 'hex'))
+        }
+
         hooks.push(new MppHook({
           serverAddress: recipientAddress,
           pricePerCall: BigInt(Math.round(samplePrice * 10_000_000)),
           paymentModes: monetization.paymentModes,
           channelAddress: process.env.MPP_CHANNEL_ADDRESS,
-          commitmentPubkey: process.env.COMMITMENT_PUBKEY,
+          commitmentPubkey,
           network,
         }))
       } catch (err) {
