@@ -181,7 +181,7 @@ importers:
         version: 0.10.4
       '@stellar/mpp':
         specifier: ^0.4.0
-        version: 0.4.0(@stellar/stellar-sdk@15.0.1)(mppx@0.5.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)))
+        version: 0.4.0(@stellar/stellar-sdk@15.0.1)(mppx@0.4.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)))
       '@stellar/stellar-sdk':
         specifier: ^15.0.1
         version: 15.0.1
@@ -207,8 +207,8 @@ importers:
         specifier: ^4.12.12
         version: 4.12.12
       mppx:
-        specifier: ^0.5.12
-        version: 0.5.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))
+        specifier: ^0.4.11
+        version: 0.4.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))
       x402-stellar:
         specifier: ^0.2.0
         version: 0.2.0(@stellar/stellar-sdk@15.0.1)
@@ -301,13 +301,19 @@ importers:
     dependencies:
       '@stellar/mpp':
         specifier: ^0.4.0
-        version: 0.4.0(@stellar/stellar-sdk@15.0.1)(mppx@0.5.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6)))
+        version: 0.4.0(@stellar/stellar-sdk@15.0.1)(mppx@0.4.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6)))
       '@stellar/stellar-sdk':
         specifier: ^15.0.1
         version: 15.0.1
+      '@x402/core':
+        specifier: ^2.10.0
+        version: 2.10.0
+      '@x402/stellar':
+        specifier: ^2.10.0
+        version: 2.10.0
       mppx:
-        specifier: ^0.5.12
-        version: 0.5.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6))
+        specifier: ^0.4.11
+        version: 0.4.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6))
       next:
         specifier: ^15.3.0
         version: 15.5.15(@opentelemetry/api@1.9.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -2180,6 +2186,15 @@ packages:
     peerDependencies:
       '@redis/client': ^1.0.0
 
+  '@remix-run/fetch-proxy@0.7.1':
+    resolution: {integrity: sha512-rPLfOpAaCXtm1dLI45uIPKERNbXbrh0P9AJc1sliz8pWd/McaFYjdr5KzB4QrFSfPvEt/Wmy6F2521qB1kK0ug==}
+
+  '@remix-run/headers@0.19.0':
+    resolution: {integrity: sha512-+62NbkXuXm9r/NdG6KfH9OCKofCWm8VjkrVPICiHKtRl8Gf2Vi6eFTN4mGgBlZRhd5mmEVRV4hTIn/JUSHDAOw==}
+
+  '@remix-run/node-fetch-server@0.13.0':
+    resolution: {integrity: sha512-1EsNo0ZpgXu/90AWoRZf/oE3RVTUS80tiTUpt+hv5pjtAkw7icN4WskDwz/KdAw5ARbJLMhZBrO1NqThmy/McA==}
+
   '@reown/appkit-common@1.8.19':
     resolution: {integrity: sha512-z5wDrYjUGY7YbM4b14NHVo54WKZ5++PQtGkcsXhiOP39yAVijubBQD8BfHs/Pu2fSFqnqLIFoCVvIEfNWWccRw==}
 
@@ -3010,6 +3025,10 @@ packages:
     resolution: {integrity: sha512-mI6Kjh9hGWDA1APawQTtCbR7702dNT/8Te1uuRFPqqdoAKBk3WpXOQI3ZSZO+5olW7BSHpmVG5KBPZpIpQxIvw==}
     engines: {node: '>=20.0.0'}
 
+  '@stellar/stellar-base@14.1.0':
+    resolution: {integrity: sha512-A8kFli6QGy22SRF45IjgPAJfUNGjnI+R7g4DF5NZYVsD1kGf7B4ITyc4OPclLV9tqNI4/lXxafGEw0JEUbHixw==}
+    engines: {node: '>=20.0.0'}
+
   '@stellar/stellar-base@15.0.0':
     resolution: {integrity: sha512-XQhxUr9BYiEcFcgc4oWcCMR9QJCny/GmmGsuwPKf/ieIcOeb5149KLHYx9mJCA0ea8QbucR2/GzV58QbXOTxQA==}
     engines: {node: '>=20.0.0'}
@@ -3017,6 +3036,11 @@ packages:
   '@stellar/stellar-sdk@14.2.0':
     resolution: {integrity: sha512-7nh2ogzLRMhfkIC0fGjn1LHUzk3jqVw8tjAuTt5ADWfL9CSGBL18ILucE9igz2L/RU2AZgeAvhujAnW91Ut/oQ==}
     engines: {node: '>=20.0.0'}
+
+  '@stellar/stellar-sdk@14.6.1':
+    resolution: {integrity: sha512-A1rQWDLdUasXkMXnYSuhgep+3ZZzyuXJKdt5/KAIc0gkmSp906HTvUpbT4pu+bVr41tu0+J4Ugz9J4BQAGGytg==}
+    engines: {node: '>=20.0.0'}
+    hasBin: true
 
   '@stellar/stellar-sdk@15.0.1':
     resolution: {integrity: sha512-iZjWKXtfohsPh+CX9wRyQNIlXLeA9VyuQB6UMC7AFBD9XnR92eOjnlfeONzk/Bsrkk6+UPlpzSy2MuF+ydHP1A==}
@@ -3681,6 +3705,12 @@ packages:
 
   '@walletconnect/window-metadata@1.0.1':
     resolution: {integrity: sha512-9koTqyGrM2cqFRW517BPY/iEtUDx2r1+Pwwu5m7sJ7ka79wi3EyqhqcICk/yDmv6jAS1rjKgTKXlEhanYjijcA==}
+
+  '@x402/core@2.10.0':
+    resolution: {integrity: sha512-n9Exnt1HN4LFaINaPYhk6Cy3ICBt0e46XN1Uo5i6efIZfIoqP6pY8ONSX/M9bU4F1fpvMj0JZ3xdcBZCiGInfw==}
+
+  '@x402/stellar@2.10.0':
+    resolution: {integrity: sha512-WUoWwH+imX2CbqPAxnFqEJwMop5PP9APU6ky0ZSV3YYiguHZ8MdvbvxqjbyA1+jtlDgI9JkMdiMUra60sI1aCw==}
 
   '@xrplf/isomorphic@1.0.1':
     resolution: {integrity: sha512-0bIpgx8PDjYdrLFeC3csF305QQ1L7sxaWnL5y71mCvhenZzJgku9QsA+9QCXBC1eNYtxWO/xR91zrXJy2T/ixg==}
@@ -5669,6 +5699,25 @@ packages:
 
   minimist@1.2.8:
     resolution: {integrity: sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==}
+
+  mppx@0.4.12:
+    resolution: {integrity: sha512-qN84ijeWcm+agw+ne+xxcMJhEw3+LJGyNxTnOQePyOrubXdPiI6duMdwNL796FXjsLMm8HizATOZBWw+qBGaMA==}
+    hasBin: true
+    peerDependencies:
+      '@modelcontextprotocol/sdk': 1.18.2
+      elysia: '>=1'
+      express: '>=5'
+      hono: '>=4'
+      viem: '>=2.47.5'
+    peerDependenciesMeta:
+      '@modelcontextprotocol/sdk':
+        optional: true
+      elysia:
+        optional: true
+      express:
+        optional: true
+      hono:
+        optional: true
 
   mppx@0.5.12:
     resolution: {integrity: sha512-pr6epOYJd8Q6D+MRMc27G48IMh0naAGMMyY1cZYrxMXVwH8PPn1ZaqUwv31svcjOV+UpSrSAe/MP2hRWJ0KQ7A==}
@@ -8999,6 +9048,14 @@ snapshots:
     dependencies:
       '@redis/client': 1.6.1
 
+  '@remix-run/fetch-proxy@0.7.1':
+    dependencies:
+      '@remix-run/headers': 0.19.0
+
+  '@remix-run/headers@0.19.0': {}
+
+  '@remix-run/node-fetch-server@0.13.0': {}
+
   '@reown/appkit-common@1.8.19(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.22.4)':
     dependencies:
       big.js: 6.2.2
@@ -10284,19 +10341,34 @@ snapshots:
 
   '@stellar/js-xdr@4.0.0': {}
 
+  '@stellar/mpp@0.4.0(@stellar/stellar-sdk@15.0.1)(mppx@0.4.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)))':
+    dependencies:
+      '@stellar/stellar-sdk': 15.0.1
+      mppx: 0.4.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))
+      zod: 4.3.6
+
+  '@stellar/mpp@0.4.0(@stellar/stellar-sdk@15.0.1)(mppx@0.4.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6)))':
+    dependencies:
+      '@stellar/stellar-sdk': 15.0.1
+      mppx: 0.4.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6))
+      zod: 4.3.6
+
   '@stellar/mpp@0.4.0(@stellar/stellar-sdk@15.0.1)(mppx@0.5.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)))':
     dependencies:
       '@stellar/stellar-sdk': 15.0.1
       mppx: 0.5.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))
       zod: 4.3.6
 
-  '@stellar/mpp@0.4.0(@stellar/stellar-sdk@15.0.1)(mppx@0.5.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6)))':
-    dependencies:
-      '@stellar/stellar-sdk': 15.0.1
-      mppx: 0.5.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6))
-      zod: 4.3.6
-
   '@stellar/stellar-base@14.0.1':
+    dependencies:
+      '@noble/curves': 1.9.7
+      '@stellar/js-xdr': 3.1.2
+      base32.js: 0.1.0
+      bignumber.js: 9.3.1
+      buffer: 6.0.3
+      sha.js: 2.4.12
+
+  '@stellar/stellar-base@14.1.0':
     dependencies:
       '@noble/curves': 1.9.7
       '@stellar/js-xdr': 3.1.2
@@ -10319,6 +10391,20 @@ snapshots:
       '@stellar/stellar-base': 14.0.1
       axios: 1.14.0
       bignumber.js: 9.3.1
+      eventsource: 2.0.2
+      feaxios: 0.0.23
+      randombytes: 2.1.0
+      toml: 3.0.0
+      urijs: 1.19.11
+    transitivePeerDependencies:
+      - debug
+
+  '@stellar/stellar-sdk@14.6.1':
+    dependencies:
+      '@stellar/stellar-base': 14.1.0
+      axios: 1.14.0
+      bignumber.js: 9.3.1
+      commander: 14.0.3
       eventsource: 2.0.2
       feaxios: 0.0.23
       randombytes: 2.1.0
@@ -11533,6 +11619,17 @@ snapshots:
     dependencies:
       '@walletconnect/window-getters': 1.0.1
       tslib: 1.14.1
+
+  '@x402/core@2.10.0':
+    dependencies:
+      zod: 3.25.76
+
+  '@x402/stellar@2.10.0':
+    dependencies:
+      '@stellar/stellar-sdk': 14.6.1
+      '@x402/core': 2.10.0
+    transitivePeerDependencies:
+      - debug
 
   '@xrplf/isomorphic@1.0.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
     dependencies:
@@ -13705,10 +13802,12 @@ snapshots:
 
   minimist@1.2.8: {}
 
-  mppx@0.5.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)):
+  mppx@0.4.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)):
     dependencies:
+      '@remix-run/fetch-proxy': 0.7.1
+      '@remix-run/node-fetch-server': 0.13.0
       incur: 0.3.25
-      ox: 0.14.10(typescript@5.9.3)(zod@4.3.6)
+      ox: 0.14.13(typescript@5.9.3)(zod@4.3.6)
       viem: 2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
       zod: 4.3.6
     optionalDependencies:
@@ -13718,11 +13817,26 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  mppx@0.5.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6)):
+  mppx@0.4.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6)):
+    dependencies:
+      '@remix-run/fetch-proxy': 0.7.1
+      '@remix-run/node-fetch-server': 0.13.0
+      incur: 0.3.25
+      ox: 0.14.13(typescript@5.9.3)(zod@4.3.6)
+      viem: 2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6)
+      zod: 4.3.6
+    optionalDependencies:
+      '@modelcontextprotocol/sdk': 1.18.2
+      express: 5.2.1
+      hono: 4.12.12
+    transitivePeerDependencies:
+      - typescript
+
+  mppx@0.5.12(@modelcontextprotocol/sdk@1.18.2)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)):
     dependencies:
       incur: 0.3.25
       ox: 0.14.10(typescript@5.9.3)(zod@4.3.6)
-      viem: 2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6)
+      viem: 2.47.12(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
       zod: 4.3.6
     optionalDependencies:
       '@modelcontextprotocol/sdk': 1.18.2
