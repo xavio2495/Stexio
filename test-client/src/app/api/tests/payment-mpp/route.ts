@@ -112,10 +112,15 @@ export async function GET(): Promise<NextResponse<TestResult>> {
     const amountBaseUnits = BigInt(String(requestData.amount ?? '1000'))
     log.push(`Amount (base units): ${amountBaseUnits}`)
 
+    // @stellar/mpp verifies: tx.timeBounds.maxTime must NOT exceed challenge.expires.
+    // setTimeout(300) sets maxTime = now+300, which always exceeds the challenge expiry
+    // (also ~300s from issuance). Use challenge.expires directly as maxTime instead.
+    const challengeExpiresUnix = Math.floor(new Date(challenge.expires as string).getTime() / 1000)
     const contract = new Contract(USDC_TESTNET)
     const tx = new TransactionBuilder(account, {
       fee: BASE_FEE,
       networkPassphrase: Networks.TESTNET,
+      timebounds: { minTime: 0, maxTime: challengeExpiresUnix },
     })
       .addOperation(contract.call(
         'transfer',
@@ -123,7 +128,6 @@ export async function GET(): Promise<NextResponse<TestResult>> {
         Address.fromString(recipient).toScVal(),
         nativeToScVal(amountBaseUnits, { type: 'i128' }),
       ))
-      .setTimeout(300)
       .build()
 
     log.push(`Simulating transaction...`)
@@ -148,6 +152,7 @@ export async function GET(): Promise<NextResponse<TestResult>> {
     const authHeader = Credential.serialize({
       challenge,
       payload: { type: 'transaction', transaction: signedTxXdr },
+      source: `did:pkh:stellar:testnet:${keypair.publicKey()}`,
     })
     log.push(`Authorization header built (${authHeader.length} chars)`)
 

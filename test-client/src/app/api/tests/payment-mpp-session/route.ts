@@ -113,10 +113,21 @@ export async function GET(): Promise<NextResponse<TestResult>> {
 
     // Step 4: Simulate prepare_commitment on Soroban + sign with Ed25519 commitment key
     log.push(`Step 4: Simulate prepare_commitment and sign with commitment key`)
-    const { rpc, Contract, Keypair, xdr } = await import('@stellar/stellar-sdk')
+    const {
+      rpc,
+      Contract,
+      Keypair,
+      xdr,
+      nativeToScVal,
+      TransactionBuilder,
+      BASE_FEE,
+      Networks,
+    } = await import('@stellar/stellar-sdk')
 
-    // Derive commitment keypair from raw hex seed
-    const commitmentKey = Keypair.fromRawEd25519Seed(Buffer.from(commitmentSecret, 'hex'))
+    // Derive commitment keypair from raw hex secret (64 chars = 32 bytes)
+    // The secret format from hex is a raw Ed25519 seed, convert to Stellar Keypair
+    const secretBuffer = Buffer.from(commitmentSecret, 'hex')
+    const commitmentKey = Keypair.fromRawEd25519Seed(secretBuffer)
     log.push(`Commitment public key: ${commitmentKey.publicKey()}`)
 
     const server = new rpc.Server(SOROBAN_RPC_URL)
@@ -124,42 +135,78 @@ export async function GET(): Promise<NextResponse<TestResult>> {
     const cumulativeAmount = BigInt(String(requestData.amount ?? '1000'))
 
     // Simulate prepare_commitment to get commitment bytes
-    const contract = new Contract(channelAddress)
-    const simulateReq = {
-      jsonrpc: '2.0' as const,
-      id: 1,
-      method: 'simulateTransaction',
-    }
-    void simulateReq
-
-    // Build simulation call for prepare_commitment(cumulative_amount)
     log.push(`Simulating prepare_commitment(${cumulativeAmount})...`)
-    const prepareResult = await server.simulateTransaction(
-      { toXDR: () => '' } as never
-    ).catch(() => null)
 
-    // If simulation not available, sign the amount bytes directly (fallback)
-    // In production: simulate prepare_commitment to get the exact commitment bytes to sign
-    const commitmentBytes = Buffer.alloc(16)
-    commitmentBytes.writeBigInt64BE(cumulativeAmount, 8)
-    const signature = commitmentKey.sign(commitmentBytes)
-    const signatureHex = Buffer.from(signature).toString('hex')
-    log.push(`Commitment signed (cumulative: ${cumulativeAmount}, sig: ${signatureHex.slice(0, 16)}...)`)
+    const contract = new Contract(channelAddress)
+    const amountScVal = nativeToScVal(cumulativeAmount, { type: 'i128' })
 
-    void prepareResult
+    let signatureHex = ''
+
+    // Build and simulate prepare_commitment call
+    try {
+      // Use recipient account as source (from mpp requirements, not challenge)
+      const recipientAddress = mppReqs?.payTo as string | undefined
+      if (!recipientAddress) throw new Error('No payTo in mpp requirements')
+
+      // Use live account with actual sequence for realistic Soroban simulation
+      const sourceAccount = await server.getAccount(recipientAddress)
+      const simTx = new TransactionBuilder(sourceAccount, {
+        fee: BASE_FEE,
+        networkPassphrase: 'Test SDF Network ; September 2015',
+      })
+        .setTimeout(30)
+        .addOperation(
+          contract.call('prepare_commitment', amountScVal)
+        )
+        .build()
+
+      const simResult = await server.simulateTransaction(simTx)
+
+      let commitmentBytes: Buffer | null = null
+
+      if (simResult.result?.retval) {
+        // Extract bytes from simulation result
+        const retval = simResult.result.retval
+        if (retval.bytes && typeof retval.bytes === 'function') {
+          try {
+            // .bytes() returns Uint8Array directly — use it as-is
+            const bytesResult = retval.bytes()
+            commitmentBytes = Buffer.from(bytesResult)
+            log.push(`Got commitment bytes from contract (${commitmentBytes.length} bytes): ${commitmentBytes.toString('hex').slice(0, 32)}...`)
+          } catch (e) {
+            log.push(`Could not extract bytes: ${e instanceof Error ? e.message : String(e)}`)
+          }
+        }
+      }
+
+      // If no bytes from contract, that's a real error—don't fall back
+      if (!commitmentBytes) {
+        throw new Error('Contract did not return commitment bytes—simulation returned ' + JSON.stringify(simResult.result?.retval?.type))
+      }
+
+      const signature = commitmentKey.sign(commitmentBytes)
+      signatureHex = Buffer.from(signature).toString('hex')
+      log.push(`Commitment signed (cumulative: ${cumulativeAmount}, sig: ${signatureHex.slice(0, 16)}...)`)
+
+    } catch (simErr) {
+      // Simulation error is fatal—we need actual commitment bytes from the contract
+      const msg = simErr instanceof Error ? simErr.message : String(simErr)
+      log.push(`Fatal: Simulation failed and no fallback possible — ${msg}`)
+      throw simErr
+    }
 
     // Step 5: Build mppx channel credential
     log.push(`Step 5: Build mppx channel credential`)
     const authHeader = Credential.serialize({
       challenge,
       payload: {
-        type: 'voucher',
-        channelAddress,
+        action: 'voucher',
         amount: cumulativeAmount.toString(),
         signature: signatureHex,
       },
     })
     log.push(`Authorization header built (${authHeader.length} chars)`)
+    log.push(`Payload: action=voucher, amount=${cumulativeAmount}, sig=${signatureHex.slice(0, 16)}...`)
 
     // Step 6: Retry with credential
     log.push(`Step 6: Retry tool call with Authorization: Payment ... (channel voucher)`)

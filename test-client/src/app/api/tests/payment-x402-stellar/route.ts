@@ -1,21 +1,14 @@
 /**
- * x402 via Stellar facilitator — direct client test.
+ * x402 via Stellar facilitator — REAL direct client test
  *
- * Tests the x402-stellar package's useFacilitator client directly from the test client,
- * without routing through the proxy. This validates the facilitator HTTP API integration
- * and the Soroban tx signing flow independently.
+ * Uses the official Coinbase Channels facilitator with proper Bearer token auth.
+ * Uses x402/stellar client library to properly construct payment payloads.
  *
- * Flow:
- *   1. Build + sign Soroban USDC SAC transfer tx
- *   2. Encode as x402 payment header
- *   3. Call facilitator.verify() directly
- *   4. If valid, call facilitator.settle()
- *   5. Report facilitator response
+ * Reference: https://developers.stellar.org/docs/build/agentic-payments/x402/built-on-stellar
  */
 import { NextResponse } from 'next/server'
 import { warn, fail, pass } from '@/lib/mcp-utils'
 import type { TestResult } from '@/lib/types'
-import type { PaymentRequirements } from 'x402-stellar'
 
 const USDC_TESTNET = 'CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA'
 const SOROBAN_RPC_URL = 'https://soroban-testnet.stellar.org'
@@ -25,7 +18,8 @@ export async function GET(): Promise<NextResponse<TestResult>> {
   const t0 = Date.now()
   const recipient = process.env.TEST_RECIPIENT_ADDRESS ?? ''
   const secretKey = process.env.TEST_STELLAR_SECRET_KEY ?? ''
-  const facilitatorUrl = process.env.FACILITATOR_URL ?? 'https://x402.org/facilitator'
+  const facilitatorUrl = (process.env.FACILITATOR_URL ?? 'https://channels.openzeppelin.com/x402/testnet').replace(/\/$/, '')
+  const facilitatorApiKey = process.env.FACILITATOR_API_KEY ?? ''
   const log: string[] = []
 
   if (!recipient || !secretKey) {
@@ -39,10 +33,26 @@ export async function GET(): Promise<NextResponse<TestResult>> {
     ))
   }
 
+  if (!facilitatorApiKey) {
+    return NextResponse.json(warn(
+      `x402-Stellar direct skipped — FACILITATOR_API_KEY not set`,
+      [
+        `Generate a new API key from:`,
+        `   Testnet: https://channels.openzeppelin.com/testnet/gen`,
+        `   Mainnet: https://channels.openzeppelin.com/gen`,
+        `Then set FACILITATOR_API_KEY in .env.local`
+      ],
+      undefined,
+      Date.now() - t0
+    ))
+  }
+
   try {
     const { rpc, TransactionBuilder, BASE_FEE, Contract, nativeToScVal, Address, Networks, Keypair } =
       await import('@stellar/stellar-sdk')
-    const { encodePaymentHeader, decodePaymentHeader, useFacilitator } = await import('x402-stellar')
+    const { x402Client } = await import('@x402/core/client')
+    const { ExactStellarScheme } = await import('@x402/stellar/exact/client')
+    const { createEd25519Signer } = await import('@x402/stellar')
 
     log.push(`Step 1: Build Soroban USDC SAC transfer transaction`)
     const keypair = Keypair.fromSecret(secretKey)
@@ -85,80 +95,110 @@ export async function GET(): Promise<NextResponse<TestResult>> {
 
     const prepared = rpc.assembleTransaction(tx, simResult).build()
     prepared.sign(keypair)
-    const signedTxXdr = prepared.toEnvelope().toXDR('base64')
-    log.push(`Transaction signed (XDR length: ${signedTxXdr.length})`)
+    log.push(`Transaction signed`)
 
-    log.push(`Step 2: Encode x402 payment header`)
-    const xPaymentHeader = encodePaymentHeader({
-      x402Version: 1,
-      scheme: 'exact',
-      network: 'stellar-testnet',
-      payload: {
-        signedTxXdr,
-        sourceAccount: keypair.publicKey(),
+    log.push(`Step 2: Create payment payload via x402 client library`)
+
+    // Create x402 client with Stellar exact scheme
+    const client = new x402Client()
+    const stellarSigner = createEd25519Signer(secretKey, 'stellar:testnet')
+    client.register('stellar:*', new ExactStellarScheme(stellarSigner, { url: SOROBAN_RPC_URL }))
+
+    // Build payment requirements matching facilitator's /supported response
+    const paymentRequired = {
+      x402Version: 2,
+      resource: { url: new URL(facilitatorUrl).href },
+      accepts: [{
+        scheme: 'exact' as const,
+        network: 'stellar:testnet' as const,
+        payTo: recipient,
         amount: amount.toString(),
-        destination: recipient,
         asset: USDC_TESTNET,
-        validUntilLedger: latestLedger.sequence + 100,
-        nonce: Date.now().toString(),
-      } as never,
+        maxTimeoutSeconds: 300,
+        extra: {
+          areFeesSponsored: true,  // ← Required by facilitator
+        },
+      }],
+    }
+
+    log.push(`Creating payment payload via x402 client...`)
+    const paymentPayload = await client.createPaymentPayload(paymentRequired)
+    log.push(`Payment payload created (version: ${paymentPayload.x402Version})`)
+
+    // Also construct paymentRequirements for facilitator endpoint
+    const paymentRequirements = paymentPayload.accepted
+
+    log.push(`Step 3: POST /verify with facilitator Bearer auth`)
+
+    const verifyRes = await fetch(`${facilitatorUrl}/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${facilitatorApiKey}`,
+      },
+      body: JSON.stringify({
+        paymentPayload,
+        paymentRequirements,
+      }),
     })
-    log.push(`X-Payment header built (${xPaymentHeader.length} chars)`)
 
-    log.push(`Step 3: Call facilitator.verify() directly at ${facilitatorUrl}`)
-    const { verify, settle } = useFacilitator({ url: facilitatorUrl })
+    const verifyBody = await verifyRes.json()
+    log.push(`Facilitator verify: status=${verifyRes.status} ok=${verifyRes.ok}`)
+    log.push(`Response: ${JSON.stringify(verifyBody)}`)
 
-    const decoded = decodePaymentHeader(xPaymentHeader)
-
-    const requirements: PaymentRequirements = {
-      scheme: 'exact',
-      network: 'stellar-testnet',
-      payTo: recipient,
-      asset: USDC_TESTNET,
-      maxAmountRequired: PRICE_STROOPS,
-      maxTimeoutSeconds: 300,
-      resource: '',
-      description: 'direct facilitator test',
-      mimeType: 'application/json',
-      outputSchema: null,
-      extra: null,
-    }
-
-    const vr = await verify(decoded as Parameters<typeof verify>[0], requirements)
-    log.push(`Facilitator verify: isValid=${vr.isValid}`)
-    if (!vr.isValid) {
-      log.push(`Invalid reason: ${vr.invalidReason ?? 'unknown'}`)
+    if (!verifyRes.ok || !verifyBody.isValid) {
       return NextResponse.json(fail(
-        `Facilitator rejected payment: ${vr.invalidReason ?? 'unknown'}`,
-        log, vr, Date.now() - t0
+        `Facilitator verify failed: ${verifyBody.invalidReason || verifyBody.error || 'unknown'}`,
+        log, verifyBody, Date.now() - t0
       ))
     }
 
-    log.push(`Step 4: Call facilitator.settle()`)
-    const sr = await settle(decoded as Parameters<typeof settle>[0], requirements)
-    log.push(`Settle success: ${sr.success}`)
-    if (sr.success) {
-      log.push(`Transaction hash: ${sr.transaction ?? 'n/a'}`)
-    } else {
-      log.push(`Settle error: ${sr.errorReason ?? 'unknown'}`)
-    }
+    log.push(`Facilitator verify: isValid ✓`)
 
-    if (!sr.success) {
+    log.push(`Step 4: POST /settle with facilitator Bearer auth`)
+
+    const settleRes = await fetch(`${facilitatorUrl}/settle`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${facilitatorApiKey}`,
+      },
+      body: JSON.stringify({
+        paymentPayload,
+        paymentRequirements,
+      }),
+    })
+
+    const settleBody = await settleRes.json()
+    log.push(`Facilitator settle: status=${settleRes.status} ok=${settleRes.ok}`)
+    log.push(`Response: ${JSON.stringify(settleBody)}`)
+
+    if (!settleRes.ok || !settleBody.success) {
       return NextResponse.json(fail(
-        `Facilitator settle failed: ${sr.errorReason ?? 'unknown'}`,
-        log, sr, Date.now() - t0
+        `Facilitator settle failed: ${settleBody.errorReason || settleBody.error || 'unknown'}`,
+        log, settleBody, Date.now() - t0
       ))
     }
+
+    log.push(`Facilitator settle: success ✓`)
+    log.push(`Transaction hash: ${settleBody.transaction}`)
 
     return NextResponse.json(pass(
-      `x402 via Stellar facilitator: verify ✓ settle ✓ tx=${sr.transaction ?? 'n/a'}`,
+      `x402 via Stellar facilitator: verify ✓ settle ✓ tx=${settleBody.transaction}`,
       log,
-      { isValid: vr.isValid, transaction: sr.transaction },
+      {
+        isValid: verifyBody.isValid,
+        transaction: settleBody.transaction,
+        settled: settleBody.success,
+      },
       Date.now() - t0
     ))
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     log.push(`Error: ${msg}`)
+    if (err instanceof Error) {
+      log.push(`Stack: ${err.stack?.split('\n').slice(0, 3).join('\n')}`)
+    }
     return NextResponse.json(fail(msg, log, undefined, Date.now() - t0))
   }
 }
